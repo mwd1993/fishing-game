@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Three.js Fishing Game</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game"></div>
+<div id="snapFlash"></div>
+<div id="titleScreen"><div id="titleContent"><h1 id="titleGameName">Still Waters</h1><button id="titleBtn" class="title-btn">Start</button></div></div>
+<!-- Top Bar -->
+<div id="topbar" class="hud-panel">
+<span class="hud-item"><svg class="coin-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fbbf24" stroke="#b45309" stroke-width="1.5"/><circle cx="12" cy="12" r="7" fill="none" stroke="#fde68a" stroke-width="1"/><text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" fill="#92400e">¢</text></svg> <b id="coins">0</b></span>
+<span class="hud-item streak-badge" id="streakBadge" style="display:none">🔥×1.0</span>
+  <span class="hud-item">Rod: <b id="rodName">Starter Rod</b></span>
+  <span class="hud-item">Bait: <b id="baitName">Worm</b></span>
+  <span class="hud-item">☀️ <b id="timeOfDay">Day</b></span>
+  <span class="hud-item"><span id="weatherIcon">🌤</span> <b id="weather">Clear</b></span>
+  <button class="btn btn-sm fw-semibold" id="inventoryBtn" aria-label="Open inventory"><span class="inv-btn-icon">🎒</span><span class="inv-btn-label">Inventory</span></button>
+  <button class="btn btn-sm fw-semibold" id="settingsBtn" aria-label="Open shop and settings"><span class="shop-btn-icon">🛒</span><span class="shop-btn-label">Shop</span><span class="shop-btn-sep" aria-hidden="true"></span><span class="shop-btn-icon">⚙️</span></button>
+</div>
+<!-- Left Panel -->
+<div id="leftpanel" class="hud-panel">
+  <h6>Collection <span id="collectionCount">0/5</span></h6>
+  <div id="collection"></div>
+  <div class="panel-divider"></div>
+  <h6 class="panel-subheading">Records</h6>
+  <div id="records"></div>
+</div>
+<!-- Right Panel -->
+<div id="rightpanel" class="hud-panel">
+  <h6>Current Fish</h6>
+  <div id="fishInfo">—</div>
+</div>
+<!-- Bottom Controls -->
+<div id="bottom" class="hud-panel">
+  <div class="meter-row">
+    <label>Aim</label>
+    <div class="meter"><div id="aimMeter" class="meter-fill"></div></div>
+  </div>
+  <div class="meter-row">
+    <label>Power</label>
+    <div class="meter"><div id="powerMeter" class="meter-fill"></div></div>
+  </div>
+  <div class="meter-row">
+    <label>Tension</label>
+    <div class="meter"><div id="tensionMeter" class="meter-fill"></div><div id="safeZone" class="safe-zone"></div></div>
+  </div>
+  <div class="meter-row">
+    <label>Stamina</label>
+    <div class="meter"><div id="staminaMeter" class="meter-fill"></div></div>
+  </div>
+  <div class="meter-row">
+    <label>Fight</label>
+    <div class="meter"><div id="fightMeter" class="meter-fill fight-fill"></div></div>
+  </div>
+  <div class="meter-row">
+    <label>Reel</label>
+    <div class="meter"><div id="reelMeter" class="meter-fill"></div></div>
+  </div>
+  <div class="meter-row">
+    <label>Adrenaline</label>
+    <div class="meter adrenaline-meter"><div id="adrenalineMeter" class="meter-fill adrenaline-fill"></div></div>
+    <button class="btn btn-sm adrenaline-btn" id="adrenalineBtn" disabled>⚡ BURST</button>
+  </div>
+  <div class="gear-row">
+    <label>Gear</label>
+    <div class="gear-selector" id="gearSelector">
+      <button class="gear-btn" data-gear="0" title="Low gear — slow, steady reeling. Gives you finer control to keep the fish on the line and avoid snapping it.">L</button>
+      <button class="gear-btn active" data-gear="1" title="Medium gear — balanced reeling speed. A good all-round choice for most catches.">M</button>
+      <button class="gear-btn" data-gear="2" title="High gear — fast reeling. Reels in fish quickly, but makes it easier to lose control and snap the line.">H</button>
+    </div>
+  </div>
+</div>
+<div class="hint hint-aim" id="hint">Tap & hold to charge cast • release to cast</div>
+<div class="modal fade" id="catchModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content catch-modal" id="catchModalContent">
+      <div class="catch-glow"></div>
+      <div class="catch-header">
+        <div class="catch-header-bg"></div>
+        <div class="catch-header-inner">
+          <div class="catch-rarity-strip">
+            <span id="catchRarity" class="catch-rarity-badge"></span>
+            <span id="catchPB" class="catch-pb"></span>
+          </div>
+          <h2 class="catch-title" id="catchName">Fish</h2>
+          <div class="catch-subtitle" id="catchSubtitle">A fine specimen</div>
+        </div>
+        <button type="button" class="btn-close btn-close-white catch-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="catch-body">
+        <div class="catch-preview-wrap">
+          <div class="catch-preview-frame">
+            <div class="catch-preview-rays"></div>
+            <div id="fishPreview" class="catch-preview"></div>
+            <div class="catch-preview-shine"></div>
+          </div>
+          <div class="catch-reward">
+            <span class="catch-reward-icon">🪙</span>
+            <span class="catch-reward-val" id="catchCoins">0</span>
+            <span class="catch-reward-label">reward</span>
+          </div>
+        </div>
+        <div class="catch-stats" id="catchStats">
+          <div class="catch-stat"><span class="catch-stat-icon">⚖️</span><span class="catch-stat-label">Weight</span><span class="catch-stat-val" id="catchWeight">—</span></div>
+          <div class="catch-stat"><span class="catch-stat-icon">📏</span><span class="catch-stat-label">Length</span><span class="catch-stat-val" id="catchLength">—</span></div>
+          <div class="catch-stat"><span class="catch-stat-icon">💪</span><span class="catch-stat-label">Strength</span><span class="catch-stat-val" id="catchStrength">—</span></div>
+          <div class="catch-stat"><span class="catch-stat-icon">🔋</span><span class="catch-stat-label">Stamina</span><span class="catch-stat-val" id="catchStamina">—</span></div>
+          <div class="catch-stat"><span class="catch-stat-icon">🪱</span><span class="catch-stat-label">Bait</span><span class="catch-stat-val" id="catchBait">—</span></div>
+          <div class="catch-stat"><span class="catch-stat-icon">💎</span><span class="catch-stat-label">Value</span><span class="catch-stat-val" id="catchValue">—</span></div>
+        </div>
+      </div>
+      <div class="catch-actions">
+        <button class="catch-btn catch-btn-release" id="releaseBtn">
+          <span class="catch-btn-icon">🌊</span>
+          <span class="catch-btn-text"><b>Release</b><small>Back to the water</small></span>
+        </button>
+        <button class="catch-btn catch-btn-keep" id="keepBtn">
+          <span class="catch-btn-icon">🎒</span>
+          <span class="catch-btn-text"><b>Keep</b><small>Add to collection</small></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="settingsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content shop-modal">
+      <div class="modal-header shop-header">
+        <div class="shop-title-wrap">
+          <h5 class="modal-title">Tackle & Settings</h5>
+          <small>Upgrade gear • Change bait • Tune experience</small>
+        </div>
+<div class="shop-coins-pill"><svg class="coin-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fbbf24" stroke="#b45309" stroke-width="1.5"/><circle cx="12" cy="12" r="7" fill="none" stroke="#fde68a" stroke-width="1"/><text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" fill="#92400e">¢</text></svg><b id="shopCoins">0</b><small>coins</small></div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="shop-tabs" role="tablist">
+        <button class="shop-tab active" data-tab="shop" role="tab" aria-selected="true">🛒 Shop</button>
+        <button class="shop-tab" data-tab="pedia" role="tab">🐠 Fishipedia</button>
+        <button class="shop-tab" data-tab="settings" role="tab">⚙️ Settings</button>
+        <button class="shop-tab" data-tab="stats" role="tab">📊 Stats</button>
+      </div>
+      <div class="modal-body shop-body">
+        <div class="tab-pane active" id="tab-shop">
+          <div class="shop-section">
+            <div class="shop-section-head">
+              <h6>🎣 Fishing Rods</h6>
+              <span class="shop-hint">Equipped: <b id="shopRodName">Starter Rod</b></span>
+            </div>
+            <div id="rodShop" class="rod-grid"></div>
+          </div>
+          <div class="shop-section">
+            <div class="shop-section-head">
+              <h6>🪱 Bait Selection</h6>
+              <span class="shop-hint">Equipped: <b id="shopBaitName">Worm</b></span>
+            </div>
+            <div id="baitShop" class="bait-grid"></div>
+          </div>
+          <div class="shop-section">
+            <div class="shop-section-head">
+              <h6>⚙️ Gear Upgrades</h6>
+              <span class="shop-hint" id="upgradeHint">Tap to upgrade</span>
+            </div>
+            <div id="upgradeShop" class="upgrade-grid"></div>
+          </div>
+        </div>
+        <div class="tab-pane" id="tab-pedia">
+          <div class="shop-section-head">
+            <h6>🐠 Fishipedia</h6>
+            <span class="shop-hint">Discovered <b id="pediaCount">0/0</b> • click a fish for lore</span>
+          </div>
+          <div id="pediaGrid" class="pedia-grid"></div>
+          <div id="pediaDetail" class="pedia-detail"></div>
+        </div>
+        <div class="tab-pane" id="tab-settings">
+          <div class="settings-grid">
+            <div class="setting-card">
+              <div class="setting-head"><span>🔊 Audio</span></div>
+              <label class="setting-row"><span>Volume</span><input type="range" id="volumeRange" min="0" max="100" value="80"></label>
+            </div>
+            <div class="setting-card">
+              <div class="setting-head"><span>🎮 Gameplay</span></div>
+              <label class="setting-row"><span>Haptics / Shake</span><button class="toggle on" id="toggleShake" aria-pressed="true"><i></i></button></label>
+              <label class="setting-row"><span>Show Safe Zone</span><button class="toggle on" id="toggleSafe" aria-pressed="true"><i></i></button></label>
+              <label class="setting-row"><span>Reduced Motion</span><button class="toggle" id="toggleMotion" aria-pressed="false"><i></i></button></label>
+              <div class="pt-2"><button class="btn btn-sm btn-outline-info w-100" id="showGuideBtn">📖 How to Play Guide</button></div>
+            </div>
+            <div class="setting-card">
+              <div class="setting-head"><span>🎨 Display</span></div>
+              <label class="setting-row"><span>Quality</span><select id="qualitySelect" class="mini-select"><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></label>
+              <label class="setting-row"><span>HUD Blur</span><button class="toggle on" id="toggleBlur" aria-pressed="true"><i></i></button></label>
+            </div>
+            <div class="setting-card danger">
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-light flex-fill" id="exportBtn">Export Save</button>
+                <button class="btn btn-sm btn-outline-danger flex-fill" id="resetBtn">Reset Progress</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane" id="tab-stats">
+          <div class="stats-grid">
+            <div class="stat-card"><span class="stat-num" id="statCaught">0</span><span class="stat-label">Species Caught</span></div>
+            <div class="stat-card"><span class="stat-num" id="statCoinsEarned">0</span><span class="stat-label">Coins Earned</span></div>
+            <div class="stat-card"><span class="stat-num" id="statBest">—</span><span class="stat-label">Heaviest Catch</span></div>
+            <div class="stat-card"><span class="stat-num" id="statUpgrades">0/12</span><span class="stat-label">Upgrades</span></div>
+          </div>
+          <div id="statsDetails" class="mt-3"></div>
+        </div>
+      </div>
+      <div class="modal-footer shop-footer">
+<small class="text-white-50">Tip: Match bait to rarity — Worm for Common, Minnow for Legendary, Shrimp for Epic/Rare.</small>
+        <button class="btn btn-light btn-sm" data-bs-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Inventory Modal -->
+<div class="modal fade" id="inventoryModal" tabindex="-1" aria-modal="true" role="dialog">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content inv-modal">
+      <div class="inv-header">
+        <div class="inv-title-wrap">
+          <h5 class="inv-title">🎒 Inventory</h5>
+          <small class="inv-subtitle">Fish • Rods • Bait — sorted & filtered</small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="inv-toolbar">
+        <div class="inv-cats" role="tablist">
+          <button class="inv-cat active" data-cat="all">All</button>
+          <button class="inv-cat" data-cat="fish">🐟 Fish</button>
+          <button class="inv-cat" data-cat="rod">🎣 Rods</button>
+          <button class="inv-cat" data-cat="bait">🪱 Bait</button>
+        </div>
+        <div class="inv-controls">
+          <input type="search" id="invSearch" class="inv-search" placeholder="Search items…" autocomplete="off">
+          <select id="invSort" class="inv-sort" aria-label="Sort inventory">
+            <option value="name">Name A→Z</option>
+            <option value="-name">Name Z→A</option>
+            <option value="rarity">Rarity</option>
+            <option value="value">Value</option>
+            <option value="qty">Quantity</option>
+            <option value="-time">Newest</option>
+          </select>
+        </div>
+      </div>
+      <div class="inv-summary" id="invSummary"></div>
+      <div class="inv-body">
+        <div class="inv-grid" id="invGrid"></div>
+        <div class="inv-empty" id="invEmpty" style="display:none">No items match your search.</div>
+      </div>
+      <div class="inv-detail" id="invDetail"></div>
+    </div>
+  </div>
+</div>
+<!-- Reusable Guide / Tutorial Modal -->
+<div class="modal fade" id="guideModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-modal="true" role="dialog">
+  <div class="modal-dialog modal-dialog-centered guide-modal-dialog">
+    <div class="modal-content guide-modal-content">
+      <div class="guide-header">
+        <div class="guide-badge-row">
+          <span class="guide-badge" id="guideBadge">🎣 HOW TO PLAY</span>
+        </div>
+        <h3 class="guide-title" id="guideTitle">Welcome to 3D Fishing</h3>
+        <div class="guide-subtitle" id="guideSubtitle">Master the waters and catch legendary fish</div>
+      </div>
+      <div class="modal-body guide-body" id="guideBody"></div>
+      <div class="modal-footer guide-footer" id="guideFooter">
+        <button type="button" class="guide-btn-never" id="guideNeverBtn" style="display:none;">
+          <span>Never Show Again</span>
+        </button>
+        <button type="button" class="guide-btn-gotit" id="guideGotItBtn">
+          <span>Got It! 🎣</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toastStack" class="toast-stack"></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sounds/sounds.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
